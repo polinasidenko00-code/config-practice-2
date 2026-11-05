@@ -1,5 +1,6 @@
 """Источники данных о зависимостях пакетов."""
 
+import re
 from dataclasses import dataclass, field, replace
 from typing import Dict, List, Tuple
 from urllib.error import HTTPError, URLError
@@ -21,6 +22,8 @@ TIMEOUT_SECONDS = 30
 RANGE_PREFIXES = ("[", "(")
 PLACEHOLDER = "${"
 OPTIONAL_VALUE = "true"
+COMMENT_PREFIX = "#"
+GRAPH_LINE = re.compile(r"([A-Z]+)\s*:((?:\s*[A-Z]+)*)\s*")
 
 
 @dataclass(frozen=True)
@@ -189,3 +192,54 @@ def effective(item, model):
         scope=item.scope or DEFAULT_SCOPE,
         optional=item.optional == OPTIONAL_VALUE,
     )
+
+
+def parse_graph(text):
+    """Разобрать описание графа тестового репозитория.
+
+    Каждая строка имеет вид "A: B C", пакеты называются большими
+    латинскими буквами. Пустые строки и строки с # пропускаются.
+    Пакет, который упомянут только как зависимость, считается
+    пакетом без зависимостей.
+    """
+    graph = {}
+    defined = set()
+    for number, line in enumerate(text.splitlines(), start=1):
+        line = line.strip()
+        if not line or line.startswith(COMMENT_PREFIX):
+            continue
+        match = GRAPH_LINE.fullmatch(line)
+        if match is None:
+            raise RepositoryError(f"line {number}: invalid format: '{line}'")
+        package, dependencies = match.group(1), match.group(2).split()
+        if package in defined:
+            raise RepositoryError(
+                f"line {number}: package {package} is defined twice"
+            )
+        defined.add(package)
+        graph[package] = dependencies
+        for dependency in dependencies:
+            graph.setdefault(dependency, [])
+    return graph
+
+
+class FileRepository:
+    """Тестовый репозиторий, описанный текстовым файлом."""
+
+    def __init__(self, path):
+        """Прочитать файл с описанием графа."""
+        try:
+            with open(path, encoding="utf-8-sig") as file:
+                self.graph = parse_graph(file.read())
+        except (OSError, UnicodeDecodeError) as error:
+            raise RepositoryError(
+                f"cannot read repository file '{path}': {error}"
+            ) from None
+
+    def direct_dependencies(self, package):
+        """Вернуть список прямых зависимостей пакета."""
+        if package not in self.graph:
+            raise RepositoryError(
+                f"package {package} not found in the test repository"
+            )
+        return [Dependency(name) for name in self.graph[package]]
