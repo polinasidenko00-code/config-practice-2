@@ -11,8 +11,8 @@ from depgraph.errors import ConfigError
 REAL_MODE = "real"
 TEST_MODE = "test"
 MODES = (REAL_MODE, TEST_MODE)
-ACTION_NAMES = ("config", "direct")
-DEFAULT_ACTION = "direct"
+ACTION_NAMES = ("config", "direct", "graph")
+DEFAULT_ACTION = "graph"
 URL_SCHEMES = ("http", "https")
 MAVEN_PACKAGE = re.compile(r"[\w.-]+:[\w.-]+(:[\w.+-]+)?")
 TEST_PACKAGE = re.compile(r"[A-Z]+")

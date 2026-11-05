@@ -108,7 +108,7 @@ class FormatConfigTest(unittest.TestCase):
         self.assertEqual(
             text.splitlines(),
             [f"package={PACKAGE}", f"repo={URL}", "mode=real",
-             "action=direct"],
+             "action=graph"],
         )
 
 
