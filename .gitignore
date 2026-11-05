@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+
+# Сборка
+build/
+dist/
+
+# Результаты работы программы
+out/
+
+# Редакторы и IDE
+.vscode/
+.idea/
+
+# ОС
+.DS_Store
+Thumbs.db
