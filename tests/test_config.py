@@ -49,6 +49,11 @@ class LoadConfigTest(unittest.TestCase):
         with self.assertRaisesRegex(ConfigError, "invalid mode"):
             load_config(real_args() + ["--mode", "fast"])
 
+    def test_invalid_action(self):
+        """Неизвестное действие - ошибка."""
+        with self.assertRaisesRegex(ConfigError, "invalid action"):
+            load_config(real_args() + ["--action", "dance"])
+
     def test_invalid_package(self):
         """Неверные имена пакета - ошибка."""
         for package in ("", "junit", "a:b:c:d", "a b:c"):
@@ -102,7 +107,8 @@ class FormatConfigTest(unittest.TestCase):
         text = format_config(load_config(real_args()))
         self.assertEqual(
             text.splitlines(),
-            [f"package={PACKAGE}", f"repo={URL}", "mode=real"],
+            [f"package={PACKAGE}", f"repo={URL}", "mode=real",
+             "action=direct"],
         )
 
 

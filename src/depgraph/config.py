@@ -11,6 +11,8 @@ from depgraph.errors import ConfigError
 REAL_MODE = "real"
 TEST_MODE = "test"
 MODES = (REAL_MODE, TEST_MODE)
+ACTION_NAMES = ("config", "direct")
+DEFAULT_ACTION = "direct"
 URL_SCHEMES = ("http", "https")
 MAVEN_PACKAGE = re.compile(r"[\w.-]+:[\w.-]+(:[\w.+-]+)?")
 TEST_PACKAGE = re.compile(r"[A-Z]+")
@@ -23,6 +25,7 @@ class Config:
     package: str
     repository: str
     mode: str
+    action: str = DEFAULT_ACTION
 
 
 def build_parser():
@@ -45,6 +48,11 @@ def build_parser():
         "--mode", default=REAL_MODE, metavar="MODE",
         help="repository mode: real (default) or test",
     )
+    parser.add_argument(
+        "--action", default=DEFAULT_ACTION, metavar="ACTION",
+        help=f"what to do: {', '.join(ACTION_NAMES)} "
+             f"(default: {DEFAULT_ACTION})",
+    )
     return parser
 
 
@@ -53,6 +61,15 @@ def validate_mode(mode):
     if mode not in MODES:
         raise ConfigError(
             f"invalid mode '{mode}': expected one of {', '.join(MODES)}"
+        )
+
+
+def validate_action(action):
+    """Проверить название действия."""
+    if action not in ACTION_NAMES:
+        raise ConfigError(
+            f"invalid action '{action}': "
+            f"expected one of {', '.join(ACTION_NAMES)}"
         )
 
 
@@ -97,12 +114,13 @@ def load_config(argv=None):
     """
     args = build_parser().parse_args(argv)
     validate_mode(args.mode)
+    validate_action(args.action)
     validate_package(args.package, args.mode)
     if args.mode == TEST_MODE:
         validate_path(args.repo)
     else:
         validate_url(args.repo)
-    return Config(args.package, args.repo, args.mode)
+    return Config(args.package, args.repo, args.mode, args.action)
 
 
 def format_config(config):
@@ -111,4 +129,5 @@ def format_config(config):
         f"package={config.package}",
         f"repo={config.repository}",
         f"mode={config.mode}",
+        f"action={config.action}",
     ])
