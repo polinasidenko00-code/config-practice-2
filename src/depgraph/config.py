@@ -11,7 +11,7 @@ from depgraph.errors import ConfigError
 REAL_MODE = "real"
 TEST_MODE = "test"
 MODES = (REAL_MODE, TEST_MODE)
-ACTION_NAMES = ("config", "direct", "graph", "reverse")
+ACTION_NAMES = ("config", "direct", "graph", "reverse", "mermaid")
 DEFAULT_ACTION = "graph"
 URL_SCHEMES = ("http", "https")
 MAVEN_PACKAGE = re.compile(r"[\w.-]+:[\w.-]+(:[\w.+-]+)?")
@@ -26,6 +26,7 @@ class Config:
     repository: str
     mode: str
     action: str = DEFAULT_ACTION
+    open_browser: bool = True
 
 
 def build_parser():
@@ -52,6 +53,10 @@ def build_parser():
         "--action", default=DEFAULT_ACTION, metavar="ACTION",
         help=f"what to do: {', '.join(ACTION_NAMES)} "
              f"(default: {DEFAULT_ACTION})",
+    )
+    parser.add_argument(
+        "--no-browser", dest="open_browser", action="store_false",
+        help="do not open the image of the graph in a browser",
     )
     return parser
 
@@ -120,7 +125,9 @@ def load_config(argv=None):
         validate_path(args.repo)
     else:
         validate_url(args.repo)
-    return Config(args.package, args.repo, args.mode, args.action)
+    return Config(
+        args.package, args.repo, args.mode, args.action, args.open_browser
+    )
 
 
 def format_config(config):
@@ -130,4 +137,5 @@ def format_config(config):
         f"repo={config.repository}",
         f"mode={config.mode}",
         f"action={config.action}",
+        f"open_browser={config.open_browser}",
     ])

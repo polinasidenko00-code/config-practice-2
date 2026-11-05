@@ -5,6 +5,7 @@ import sys
 from depgraph.config import TEST_MODE, format_config
 from depgraph.errors import RepositoryError
 from depgraph.graph import bfs, find_cycles, reverse_edges
+from depgraph.mermaid import open_page, save_page, to_mermaid
 from depgraph.repository import FileRepository, MavenRepository
 
 
@@ -128,9 +129,21 @@ def show_reverse(config):
     return "\n".join(lines)
 
 
+def show_mermaid(config):
+    """Вывести текст диаграммы Mermaid и показать изображение графа."""
+    repository = create_repository(config)
+    traversal = collect_graph(repository, config.package)
+    diagram = to_mermaid(traversal.edges)
+    path = save_page(config.package, diagram)
+    if config.open_browser:
+        open_page(path)
+    return f"{diagram}\n\nimage page: {path}"
+
+
 ACTIONS = {
     "config": show_config,
     "direct": show_direct,
     "graph": show_graph,
     "reverse": show_reverse,
+    "mermaid": show_mermaid,
 }
