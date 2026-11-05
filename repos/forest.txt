@@ -1,0 +1,7 @@
+# Две несвязанные части и имена из нескольких букв.
+APP: LIB CORE
+LIB: CORE UTIL
+CORE: UTIL
+TOOL: PLUGIN
+PLUGIN: LIB
+SOLO:
