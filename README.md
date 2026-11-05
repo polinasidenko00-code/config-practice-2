@@ -12,6 +12,7 @@ Maven. Менеджеры пакетов и сторонние библиоте�
   из репозитория Maven по URL.
 - **Этап 3. Основные операции** — граф зависимостей с учетом
   транзитивности (BFS с рекурсией), циклы, тестовый репозиторий.
+- **Этап 4. Дополнительные операции** — обратные зависимости пакета.
 
 Внешних зависимостей нет, требуется Python 3.8+.
 
@@ -26,7 +27,7 @@ python src/main.py --package NAME --repo URL_OR_PATH [--mode MODE] [--action ACT
 | `--package NAME` | Имя анализируемого пакета: `group:artifact[:version]`, в тестовом режиме — большие латинские буквы |
 | `--repo URL_OR_PATH` | URL-адрес репозитория (`http`, `https`) или путь к файлу тестового репозитория |
 | `--mode MODE` | Режим работы: `real` (по умолчанию) или `test` |
-| `--action ACTION` | Что сделать: `config` — вывести параметры в формате ключ-значение, `direct` — вывести прямые зависимости, `graph` — вывести граф зависимостей (по умолчанию) |
+| `--action ACTION` | Что сделать: `config` — вывести параметры в формате ключ-значение, `direct` — вывести прямые зависимости, `graph` — вывести граф зависимостей (по умолчанию), `reverse` — вывести обратные зависимости |
 
 ## Получение данных из Maven
 
@@ -89,6 +90,18 @@ C: D
 | `repos/forest.txt` | Несвязанные части, имена из нескольких букв |
 | `repos/broken.txt` | Файл с ошибкой формата |
 
+## Обратные зависимости
+
+Действие `--action reverse` выводит пакеты, которые зависят от заданного
+пакета, напрямую и транзитивно. Ребра всех пакетов репозитория
+разворачиваются функцией `reverse_edges`, а затем используется тот же
+обход `bfs`, что и для прямого графа. Уровень 1 — прямые зависимые
+пакеты, следующие уровни — транзитивные.
+
+Действие работает только в тестовом режиме: в репозитории Maven нет
+индекса, который позволял бы узнать, какие пакеты зависят от данного,
+а перебрать все пакеты Maven Central невозможно.
+
 ## Обработка ошибок
 
 Неверные значения параметров выводятся в stderr, код завершения 2.
@@ -113,6 +126,7 @@ C: D
 | Нет пакета в тестовом репозитории | `error: package Z not found in the test repository` |
 | Неверная строка файла | `error: line 3: invalid format: 'b: C'` |
 | Пакет описан дважды | `error: line 2: package A is defined twice` |
+| `reverse` в реальном режиме | `error: reverse dependencies need the test mode: ...` |
 
 ## Сборка и запуск тестов
 
@@ -132,8 +146,8 @@ run.bat test
 `python -m unittest discover -s tests -t .`
 
 Демонстрация этапов: `scripts/demo_stage1.bat`,
-`scripts/demo_stage2.bat`, `scripts/demo_stage3.bat` (или `.sh` в
-Linux и macOS).
+`scripts/demo_stage2.bat`, `scripts/demo_stage3.bat`,
+`scripts/demo_stage4.bat` (или `.sh` в Linux и macOS).
 
 ## Примеры использования
 
@@ -170,4 +184,21 @@ cycles:
 A -> B -> C -> A
 D -> E -> D
 packages: 5
+```
+
+```
+> python src/main.py --package E --repo repos/diamond.txt --mode test --action reverse
+reverse dependencies of E:
+levels:
+0: E
+1: D
+2: B, C
+3: A
+edges (package <- dependents):
+E <- D
+D <- B, C
+B <- A
+C <- A
+A <- (none)
+dependents: 4
 ```
