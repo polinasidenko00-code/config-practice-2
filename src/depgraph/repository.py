@@ -153,6 +153,17 @@ class MavenRepository:
         for key, value in imported.managed.items():
             model.managed.setdefault(key, value)
 
+    def packages(self):
+        """Сообщить, что перечислить все пакеты нельзя.
+
+        В репозитории Maven нет индекса зависимых пакетов, поэтому
+        обратные зависимости доступны только в тестовом режиме.
+        """
+        raise RepositoryError(
+            "reverse dependencies need the test mode: a Maven "
+            "repository has no index of dependent packages"
+        )
+
     def direct_dependencies(self, package):
         """Вернуть список прямых зависимостей пакета."""
         group, artifact, version = split_package(package)
@@ -235,6 +246,10 @@ class FileRepository:
             raise RepositoryError(
                 f"cannot read repository file '{path}': {error}"
             ) from None
+
+    def packages(self):
+        """Вернуть имена всех пакетов репозитория."""
+        return list(self.graph)
 
     def direct_dependencies(self, package):
         """Вернуть список прямых зависимостей пакета."""

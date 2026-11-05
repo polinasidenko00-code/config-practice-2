@@ -34,6 +34,15 @@ def bfs(frontier, neighbors, traversal=None):
     return traversal
 
 
+def reverse_edges(edges):
+    """Построить граф, в котором все ребра направлены обратно."""
+    reversed_edges = {node: [] for node in edges}
+    for node, children in edges.items():
+        for child in children:
+            reversed_edges[child].append(node)
+    return reversed_edges
+
+
 def find_cycles(edges):
     """Найти циклы в графе поиском в глубину.
 

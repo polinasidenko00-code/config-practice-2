@@ -4,7 +4,7 @@ import sys
 
 from depgraph.config import TEST_MODE, format_config
 from depgraph.errors import RepositoryError
-from depgraph.graph import bfs, find_cycles
+from depgraph.graph import bfs, find_cycles, reverse_edges
 from depgraph.repository import FileRepository, MavenRepository
 
 
@@ -92,8 +92,45 @@ def show_graph(config):
     return "\n".join(lines)
 
 
+def collect_reverse(repository, target):
+    """Найти обходом в ширину пакеты, зависящие от target."""
+    packages = repository.packages()
+    repository.direct_dependencies(target)
+    edges = {
+        package: [
+            item.name for item in repository.direct_dependencies(package)
+        ]
+        for package in packages
+    }
+    return bfs([target], reverse_edges(edges).get)
+
+
+def show_reverse(config):
+    """Вывести пакеты, которые зависят от заданного пакета."""
+    repository = create_repository(config)
+    traversal = collect_reverse(repository, config.package)
+    dependents = [
+        package for level in traversal.levels[1:] for package in level
+    ]
+    if not dependents:
+        return f"no packages depend on {config.package}"
+    lines = [f"reverse dependencies of {config.package}:", "levels:"]
+    lines.extend(
+        f"{number}: {', '.join(level)}"
+        for number, level in enumerate(traversal.levels)
+    )
+    lines.append("edges (package <- dependents):")
+    lines.extend(
+        f"{node} <- {', '.join(children) or '(none)'}"
+        for node, children in traversal.edges.items()
+    )
+    lines.append(f"dependents: {len(dependents)}")
+    return "\n".join(lines)
+
+
 ACTIONS = {
     "config": show_config,
     "direct": show_direct,
     "graph": show_graph,
+    "reverse": show_reverse,
 }
