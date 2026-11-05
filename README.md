@@ -10,6 +10,8 @@ Maven. Менеджеры пакетов и сторонние библиоте�
   командной строки, вывод параметров, обработка ошибок.
 - **Этап 2. Сбор данных** — получение прямых зависимостей пакета
   из репозитория Maven по URL.
+- **Этап 3. Основные операции** — граф зависимостей с учетом
+  транзитивности (BFS с рекурсией), циклы, тестовый репозиторий.
 
 Внешних зависимостей нет, требуется Python 3.8+.
 
@@ -24,7 +26,7 @@ python src/main.py --package NAME --repo URL_OR_PATH [--mode MODE] [--action ACT
 | `--package NAME` | Имя анализируемого пакета: `group:artifact[:version]`, в тестовом режиме — большие латинские буквы |
 | `--repo URL_OR_PATH` | URL-адрес репозитория (`http`, `https`) или путь к файлу тестового репозитория |
 | `--mode MODE` | Режим работы: `real` (по умолчанию) или `test` |
-| `--action ACTION` | Что сделать: `config` — вывести параметры в формате ключ-значение, `direct` — вывести прямые зависимости (по умолчанию) |
+| `--action ACTION` | Что сделать: `config` — вывести параметры в формате ключ-значение, `direct` — вывести прямые зависимости, `graph` — вывести граф зависимостей (по умолчанию) |
 
 ## Получение данных из Maven
 
@@ -44,6 +46,48 @@ python src/main.py --package NAME --repo URL_OR_PATH [--mode MODE] [--action ACT
    и область берутся из управляемых версий.
 
 Загруженные модели кешируются на время работы программы.
+
+В вывод `direct` попадают все зависимости из POM с их областью.
+В граф входят только зависимости, нужные при выполнении пакета:
+области `compile` и `runtime`, кроме необязательных (`optional`).
+
+## Построение графа
+
+Граф строится функцией `bfs`: обход в ширину с рекурсией, где один
+вызов обрабатывает один уровень. Для всех пакетов текущего уровня
+запрашиваются зависимости, а затем функция вызывает себя для следующего
+уровня, в который входят только еще не посещенные пакеты.
+
+Поэтому циклические зависимости не приводят к зацикливанию: каждый
+пакет обрабатывается один раз. Сами циклы находит функция `find_cycles`
+(поиск в глубину) и выводит их отдельно.
+
+Если данные о транзитивной зависимости получить не удалось, выводится
+предупреждение `warning: ...`, а пакет остается в графе без зависимостей.
+Ошибка для анализируемого пакета прерывает работу.
+
+## Тестовый репозиторий
+
+В режиме `--mode test` вместо URL указывается путь к файлу с описанием
+графа. Пакеты называются большими латинскими буквами, пустые строки и
+строки с `#` пропускаются. Пакет, упомянутый только как зависимость,
+считается пакетом без зависимостей.
+
+```
+# пакет: зависимости
+A: B C
+B: D
+C: D
+```
+
+| Файл | Случай |
+|---|---|
+| `repos/simple.txt` | Цепочка |
+| `repos/diamond.txt` | Ромб: общая зависимость обходится один раз |
+| `repos/cycle.txt` | Два цикла |
+| `repos/self_loop.txt` | Пакет зависит сам от себя |
+| `repos/forest.txt` | Несвязанные части, имена из нескольких букв |
+| `repos/broken.txt` | Файл с ошибкой формата |
 
 ## Обработка ошибок
 
@@ -66,6 +110,9 @@ python src/main.py --package NAME --repo URL_OR_PATH [--mode MODE] [--action ACT
 | Нет сети или адрес недоступен | `error: cannot download <url>: <причина>` |
 | Файл поврежден | `error: invalid XML: ...` |
 | Файл не является POM | `error: not a POM file: root element <html>` |
+| Нет пакета в тестовом репозитории | `error: package Z not found in the test repository` |
+| Неверная строка файла | `error: line 3: invalid format: 'b: C'` |
+| Пакет описан дважды | `error: line 2: package A is defined twice` |
 
 ## Сборка и запуск тестов
 
@@ -85,7 +132,8 @@ run.bat test
 `python -m unittest discover -s tests -t .`
 
 Демонстрация этапов: `scripts/demo_stage1.bat`,
-`scripts/demo_stage2.bat` (или `.sh` в Linux и macOS).
+`scripts/demo_stage2.bat`, `scripts/demo_stage3.bat` (или `.sh` в
+Linux и macOS).
 
 ## Примеры использования
 
@@ -98,8 +146,28 @@ action=config
 ```
 
 ```
-> python src/main.py --package junit:junit:4.13.2 --repo https://repo1.maven.org/maven2
+> python src/main.py --package junit:junit:4.13.2 --repo https://repo1.maven.org/maven2 --action direct
 direct dependencies of junit:junit:4.13.2:
 org.hamcrest:hamcrest-core:1.3 (compile)
 org.hamcrest:hamcrest-library:1.3 (test)
+```
+
+```
+> python src/main.py --package A --repo repos/cycle.txt --mode test
+dependency graph of A:
+levels:
+0: A
+1: B
+2: C, D
+3: E
+edges:
+A -> B
+B -> C, D
+C -> A
+D -> E
+E -> D
+cycles:
+A -> B -> C -> A
+D -> E -> D
+packages: 5
 ```
