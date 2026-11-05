@@ -4,7 +4,7 @@ cd "$(dirname "$0")/.." || exit 1
 URL=https://repo1.maven.org/maven2
 
 echo "===== 1. Valid parameters ====="
-python3 src/main.py --package junit:junit:4.13.2 --repo "$URL"
+python3 src/main.py --package junit:junit:4.13.2 --repo "$URL" --action config
 echo "exit code: $?"
 
 echo "===== 2. Invalid package name ====="

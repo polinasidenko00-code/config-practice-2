@@ -4,7 +4,7 @@ pushd "%~dp0.."
 set URL=https://repo1.maven.org/maven2
 
 echo ===== 1. Valid parameters =====
-python src\main.py --package junit:junit:4.13.2 --repo %URL%
+python src\main.py --package junit:junit:4.13.2 --repo %URL% --action config
 echo exit code: %ERRORLEVEL%
 
 echo ===== 2. Invalid package name =====
