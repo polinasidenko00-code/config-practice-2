@@ -1,7 +1,7 @@
 """Разбор файлов описания пакетов Maven (POM)."""
 
 import re
-import xml.etree.ElementTree as ElementTree
+import xml.etree.ElementTree as etree
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 
@@ -39,8 +39,8 @@ class Pom:
 def parse_xml(data):
     """Разобрать XML и убрать пространства имен из имен тегов."""
     try:
-        root = ElementTree.fromstring(data)
-    except ElementTree.ParseError as error:
+        root = etree.fromstring(data)
+    except etree.ParseError as error:
         raise RepositoryError(f"invalid XML: {error}") from None
     for element in root.iter():
         element.tag = element.tag.rpartition(NAMESPACE_END)[2]
